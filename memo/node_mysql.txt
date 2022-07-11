@@ -1,0 +1,416 @@
+** ORM(Object Relational Mapping)
+=> 객체 지향 패러다임을 .RDBMS에 보존하는 기술
+=> 프로그래밍 언어의 객체와 데이터베이스의 테이블을 매핑시키는 것
+
+SQL 없이 데이터베이스 작업 가능
+
+1. 장점
+=> 데이터베이스를 변경하고자 할 때 설정만 변경하면 됩니다.
+=> SQL Mapper보다 성능이 우수
+
+2. 단점
+=> 데이터베이스 구조를 알아야 합니다.
+=> learning curve가 길다고 합니다.
+
+3. 실무
+=> SI 업계에서는 SQL Mapper 선호
+=> 솔루션 업계에서는 ORM 선호
+
+4. node의 mysql ORM을 위한 패키지를 설치
+npm install sequelize sequelize-cli mysql2
+
+5. sequelize 초기화 - config, migration, models, seeders라는 디렉토리가 생성
+npx sequelize init
+
+6. models 디렉토리의 index.js 파일을 수정
+const Sequelize = require('sequelize');
+
+const env = process.env.NODE_ENV || 'development';
+const config = require('../config/config')[env];
+const db = {};
+
+let sequelize = new Sequelize(config.database, config.username,
+  config.password, config);
+
+db.sequelize = sequelize;
+
+module.exports = db;
+
+7. config 디렉토리의 config.json 파일의 접속정보 수정
+{
+  "development": {
+    "username": "kabigon",
+    "password": "jjansu88",
+    "database": "node",
+    "host": "127.0.0.1",
+    "dialect": "mysql"
+  },
+  "test": {
+    "username": "kabigon",
+    "password": "jjansu88",
+    "database": "node",
+    "host": "127.0.0.1",
+    "dialect": "mysql"
+  },
+  "production": {
+    "username": "kabigon",
+    "password": "jjansu88",
+    "database": "node",
+    "host": "127.0.0.1",
+    "dialect": "mysql"
+  }
+}
+
+8. index.js 파일에 데이터베이스 접속 코드 작성 후 실행하고 콘솔 확인
+// ORM을 사용한 데이터베이스 접속
+const {sequelize} = require('./models')
+
+sequelize.sync({force:false})
+    .then(() => {
+        console.log('데이터베이스 접속 성공')
+    })
+    .catch((err) => {
+        console.log(err)
+    })
+
+9. 데이터베이스에 접속해서 실제 매핑할 테이블을 생성
+-- 테이블 생성
+CREATE TABLE IF NOT EXISTS goods(
+id int not null auto_increment,
+itemid int,
+itemname VARCHAR(100), 
+price int,
+description VARCHAR(200), 
+pictureurl VARCHAR(100),
+updatedate varchar(20),
+PRIMARY KEY (id)
+)ENGINE=InnoDB DEFAULT CHARSET=utf8;
+
+select * from goods;
+
+10. goods 테이블과 매핑할 모델 파일을 models 디렉토리에 생성하고 작성 - item.js
+const Sequelize = require('sequelize')
+
+module.exports = class Item extends Sequelize.Model{
+    static init(sequelize){
+        return super.init({
+            itemid:{
+                type:Sequelize.INTEGER.UNSIGNED,
+                allowNull:false,
+                unique:true
+            },
+            itemname:{
+                type:Sequelize.STRING(100),
+                allowNull:true
+            },
+            price:{
+                type:Sequelize.INTEGER.UNSIGNED,
+                allowNull:true
+            },
+            description:{
+                type:Sequelize.STRING(200),
+                allowNull:true
+            },
+            pictureurl:{
+                type:Sequelize.STRING(100),
+                allowNull:true
+            },
+            updatedate:{
+                type:Sequelize.STRING(20),
+                allowNull:true
+            }
+        }, {
+            sequelize,
+            timestamps:false,
+            underscored:false,
+            modelName:Item,
+            tableName:'goods',
+            paranoid:false,
+            charset:'utf8',
+            collate:'utf8_general_ci'
+        })
+    }
+}
+
+11. models 디렉토리의 index.js 파일에 Item 코드를 삽입
+const Sequelize = require('sequelize');
+const Item = require('./item')
+
+const env = process.env.NODE_ENV || 'development';
+const config = require('../config/config')[env];
+const db = {};
+
+let sequelize = new Sequelize(config.database, config.username, config.password, config);
+
+db.Sequelize =Sequelize;
+db.sequelize = sequelize;
+
+db.Item = Item
+Item.init(sequelize)
+
+module.exports = db;
+
+12. index.js 파일에 모델을 가져오는 코드를 추가
+const {Item} = require('./models/item')
+
+13. index.js 파일의 데이터 삽입 처리 함수를 수정
+// 데이터 삽입 요청 : 하나의 파일 업로드
+app.post('/item/insert', upload.single('pictureurl'), async(req, res, next) => {
+    // 클라이언트가 전송한 데이터를 가져오기
+    const itemname = req.body.itemname
+    const description = req.body.description
+    const price = req.body.price
+
+    // 파일 파라미터 읽기
+    var pictureurl
+
+    if(req.file) {
+        pictureurl = req.file.filename
+    } else {
+        pictureurl="default.png"
+    }
+
+    // 가장 큰 itemid를 조회해서 다음 itemid를 생성
+    try {
+        var x = await Item.max('itemid')
+
+        if(x > 1) {
+            itemid = x
+        } else {
+            itemid = 1
+        }
+
+    } catch(err) {
+        console.log(err)
+    }
+
+    // 삽입하는 날짜(현재 날짜 및 시간)를 생성
+    var date = new Date()
+
+    var year = date.getFullYear()
+    var month = date.getMonth() + 1
+    var day = date.getDate()
+    
+    var hour = date.getHours()
+    var minute = date.getMinutes()
+    var second = date.getSeconds()
+
+    month = month >= 10 ? month : '0' + month;
+    day = day >= 10 ? day : '0' + day
+
+    hour = hour >= 10 ? hour : '0' + hour
+    minute = minute >= 10 ? minute : '0' + minute
+    second = second >= 10 ? second : '0' + second
+
+    Item.create({
+        itemid:itemid,
+        itemname:itemname,
+        price:price,
+        description:description,
+        pictureurl:pictureurl,
+        updatedate:year + '-' + month + '-' + day
+    })
+
+    // 데이터를 삽입한 시간을 update.txt에 기록
+    const writeStream = fs.createWriteStream('./update.txt')
+
+    writeStream.write(
+        '[' + year + '-' + month + '-' + day + ' ' + hour + ':' + minute + ':' + second + ' -> 레코드 삽입 완료]',
+        (err) => {
+            if(err) {
+                throw err
+            }
+    })
+    writeStream.end()
+
+    res.json({'result':true})
+})
+
+14. index.js 파일에서 전체 데이터 가져오기 수정
+// 전체 데이터 가져오기 요청을 처리하는 라우팅 함수
+app.get('/item/all', async(req, res, next) => {
+    try {
+        // 전체 데이터와 전테 데이터 개수를 가져와서 출력
+        var list = await Item.findAll()
+        var count = await Item.count;   // 조회한 데이터 개수를 저장할 변수
+
+        console.log(count);
+
+        res.json({'count':count, 'list':list})
+    } catch(err) {
+        console.log(err)
+    }
+})
+
+15. index.js 파일에서 데이터 일부분 가져오기 수정
+// 데이터 일부분 가져오기
+app.get('/item/list', async(req, res, next)=> {
+    // 파라미터 가져오기 : 일부분을 가져오는 경우 데이터 개수와 페이지 번호가 필요
+    // get 방식에서 pageno와 count 파라미터를 가져오기
+    const pageno = req.query.pageno
+    const count = req.query.count
+
+    // 일부분을 가져오기 위한 변수 선언
+    var start = 0;
+    var size = 5;
+
+    if(count != undefined) {
+        size = parseInt(count)
+    }
+
+    if(pageno != undefined) {
+        start = (parseInt(pageno) - 1) * size
+    }
+
+    try {
+        // start부터 size까지의 데이터를 조회
+        // itemid의 내림차순 정렬
+        var list = await Item.findAll({
+            offset:start,
+            limit:size,
+            order: [
+                ['itemid', 'DESC']
+            ]
+        })
+
+        var cnt = await Item.count()
+
+        res.json({'count':cnt, 'list':list})
+    } catch (err) {
+        console.log(err)
+    }
+})
+
+16. index.js 파일에서 데이터 상세보기 처리 코드를 수정
+// 상세 보기 - 데이터 1개를 가져와서 리턴
+app.get('/item/detail', async(req, res, next) => {
+    // 1개의 데이터를 찾아오기 위한 primary key 값 가져오기
+    var itemid = req.query.itemid
+
+    if(itemid == undefined) {
+        itemid = 1;
+    }
+
+    try {
+        var item = await Item.findOne({
+            where:{itemid:itemid}
+        })
+
+        res.json({'result':true, 'item':item})
+    } catch (err) {
+        console.log(err)
+        res.json({'result':false})
+    }
+})
+
+17. index.js 파일에서 데이터 삭제 요청 수정
+// 데이터 삭제 요청
+app.post('/item/delete', async(req, res, next) => {
+    // 파라미터 읽어오기 : 삭제는 기본키만을 읽어옵니다.
+    // 클라이언트에서는 itemid라는 이름으로 itemid를 post 방식으로 전송
+    const itemid = req.body.itemid
+
+    // 삭제하는 날짜(현재 날짜 및 시간)를 생성
+    var date = new Date()
+
+    var year = date.getFullYear()
+    var month = date.getMonth() + 1
+    var day = date.getDate()
+    
+    var hour = date.getHours()
+    var minute = date.getMinutes()
+    var second = date.getSeconds()
+
+    month = month >= 10 ? month : '0' + month;
+    day = day >= 10 ? day : '0' + day
+
+    hour = hour >= 10 ? hour : '0' + hour
+    minute = minute >= 10 ? minute : '0' + minute
+    second = second >= 10 ? second : '0' + second
+
+    try {
+        var item = await Item.destroy({
+            where:{itemid:itemid}
+        })
+
+        const writeStream = fs.createWriteStream('./update.txt')
+
+        writeStream.write(
+            '[' + year + '-' + month + '-' + day + ' ' + hour + ':' + minute + ':' + second + ' -> 레코드 삭제 완료]',
+            (err) => {
+                if(err) {
+                    throw err
+                }
+        })
+        writeStream.end()
+
+        res.json({'result':true})
+    } catch (err) {
+        console.log(err)
+        res.json({'result':false})
+    }
+})      
+
+18. index.js 파일에서 데이터 수정 요청 코드를 수정
+app.post("/item/update", upload.single('pictureurl'), 
+    async(req, res, next) => {
+        //파라미터 읽어오기
+        const itemid = req.body.itemid;
+        const itemname = req.body.itemname;
+        const description = req.body.description;
+        const price = req.body.price;
+        const oldpictureurl = req.body.oldpictureurl;
+        
+        var pictureurl;
+
+        if(req.file){
+            pictureurl = req.file.filename;
+        }else{
+            pictureurl = oldpictureurl;
+        }
+
+         //삭제하는 날짜(현재 날짜 및 시간)를 생성
+        var date = new Date();
+        var year = date.getFullYear();
+
+        var month = date.getMonth() + 1;
+        month = month >= 10 ? month : '0' + month;
+
+        var day = date.getDate();
+        day = day >= 10 ? day : '0' + day
+
+        var hour = date.getHours();
+        hour = hour >= 10 ? hour : '0' + hour;
+
+        var minute = date.getMinutes();
+        minute = minute >= 10 ? minute : '0' + minute;
+
+        var second = date.getSeconds();
+        second = second >= 10 ? second : '0' + second;
+
+        try {
+            var item = Item.update({
+                itemname:itemname,
+                price:price,
+                description:description,
+                pictureurl:pictureurl,
+                updatedate:year + '-' + month+'-' + day
+            }, {where:{itemid:itemid}})
+
+            // 데이터를 수정한 시간을 update.txt에 기록
+            const writeStream = fs.createWriteStream('./update.txt');
+
+            writeStream.write(
+                '[' + year + '-' + month + '-' + day + ' ' + hour + ':' + minute + ':' + second + ' -> 레코드 수정 완료]',
+                (err) => {
+                    if(err) {
+                        throw err
+                    }
+            })
+
+            res.json({"result":true})
+        } catch (err) {
+            console.log(err)
+            res.json({"result":false})
+        }
+}) 

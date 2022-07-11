@@ -1,0 +1,834 @@
+**Node_MySQL 연동
+1. 기본 요청이 왔을 때 html 출력
+1) app.js 파일에 기본 요청을 처리하는 라우팅 코드를 수정
+// 기본 요청이 왔을 때 수행할 내용
+app.get('/', (req,res, next) => {
+    res.sendFile(path.join(__dirname, '/index.html'))
+})
+
+2) public 디렉토리에 index.html 파일을 생성해서 작성
+<!DOCTYPE html><html>
+<head>
+    <meta charset="UTF-8">
+    <title>Document</title>
+</head>
+<body>
+    <h1>MySQL</h1>
+</body>
+</html>
+
+3) 서버를 구동하고 localhost:포트번호를 입력하고 index.html 파일이 출력되는지 확인
+
+4) 프로젝트의 log 디렉토리의 오늘 날짜 로그 파일이 생성되고 로그가 기록되는지 확인
+
+2. 전체 데이터 가져와서 출력하기
+1) app.js 파일에서 모든 데이터를 가져와서 리턴해주는 요청을 처리하는 라우팅 함수를 구현
+// 전체 데이터 가져오기 요청을 처리하는 라우팅 함수
+app.get('/item/all', (req, res, next) => {
+    // 전체 데이터와 전테 데이터 개수를 가져와서 출력
+    var list = []       // 조회한 데이터 저장할 배열
+    var count = 0;   // 조회한 데이터 개수를 저장할 변수
+
+    // 전체 데이터 가져오는 query
+    connection.query('select * from goods order by itemid desc',
+    (err, results, fields) => {
+        // 에러가 발생했을 때
+        if(err) {
+            throw err
+        }
+
+        list = results
+
+        console.log(fields);
+
+        // 데이터 개수 가져오기
+        connection.query('select count(*) cnt from goods',
+        (err, results, fields) => {
+            // 에러가 발생했을 때
+            if(err) {
+                throw err
+            }
+
+            // 읽어온 데이터 개수를 count에 저장
+            count = results[0].cnt
+
+            // json 출력
+            res.json({'count':count, 'list':list})
+        })
+    })
+})
+
+2) 웹 브라우저에서 localhost:포트번호/item/all을 입력하고 데이터가 출력되는지 확인
+=> 구조는 count 키에 데이터 개수가 저장되어 있고 list 키에 item 배열이 저장되어 있습니다.
+
+3) index.html 파일에 요청 메뉴와 출력 영역을 생성
+    <!-- 메뉴 -->
+    <a href="#" id="allbtn">전체 데이터 가져오기</a>
+
+    <!-- 데이터 출력 영역 -->
+    <div id="content"></div>
+    
+    <!-- 데이터 삽입과 수정 시 폼을 출력할 영역 -->
+    <div id="updatearea"></div>
+
+4) index.html 파일에 전체 데이터 가져오기 메뉴를 클릭했을 때 수행되는 동작을 위한 스크립트 코드 작성
+<script>
+        var content = document.getElementById('content')
+        var updatearea = document.getElementById('updatearea')
+
+        // 전체 데이터 가져오기를 클릭했을 때
+        document.getElementById('allbtn').addEventListener(
+            'click', (e) => {
+                //Ajax 객체 생성
+                var request = new XMLHttpRequest();
+
+                // 요청 생성
+                request.open('GET', '/item/all', true)
+
+                // 요청 전송
+                request.send('')
+
+                // 응답을 받았을 때
+                request.addEventListener('load', () => {
+                    // 읽어온 데이터 JSON 파싱
+                    var data = JSON.parse(request.responseText)
+                    
+                    // count에는 데이터 개수가 list에는 데이터 배열
+                    var count = data.count
+                    var list = data.list
+
+                    // 출력 내용 만들기
+                    var display = "<div align='center' class='body'>"
+                    display += "<h2>상품 목록 화면</h2>"
+
+                    display += "<table border='1'>"
+
+                    display += "<tr><td colspan='3' align='center'>"
+                    display += "전체 데이터 개수 : " + count;
+                    display += "</td></td>"
+
+                    display += "<tr class='header'>"
+                    display += "<th align='center' width='80'>상품ID</th>"
+                    display += "<th align='center' width=120'>상품명</th>"
+                    display += "<th align='center' width='80'>가격</th>"
+                    display += "</tr>"
+
+                    // 데이터 출력하는 부분
+                    for (var idx in list) {
+                        var item = list[idx];
+
+                        display += "<tr class='record'>"
+                        display += "<td align='center'>" + item.itemid + "</th>"
+                        display += "<td align='center'>" + item.itemname + "</th>"
+                        display += "<td align='center'>" + item.price + "원</th>"
+                        display += "</tr>"
+                    }
+
+                    display += "</table></div>"
+
+                    content.innerHTML= display
+                })
+        })
+    </script>
+
+5) index.html 파일에 스타일 시트 추가
+<link rel="stylesheet" href="/css/common.css" />	
+
+6) public 디렉토리에 css 디렉토리를 만들고 common.css를 추가한 후 작성
+a {
+    text-decoration: none;
+}
+
+div.body {
+    margin-top: 50px;
+    margin-bottom: 50px;
+}
+
+tr.header {
+    background: #C9BFED;
+}
+
+tr.record {
+    background: #EDEDED;
+}
+
+3. 데이터 일부분만 가져와서 출력하기
+// 데이터 일부분 가져오기
+app.get('/item/list', (req, res, next)=> {
+    // 파라미터 가져오기 : 일부분을 가져오는 경우 데이터 개수와 페이지 번호가 필요
+    // get 방식에서 pageno와 count 파라미터를 가져오기
+    const pageno = req.query.pageno
+    const count = req.query.count
+
+    // 일부분을 가져오기 위한 변수 선언
+    var start = 0;
+    var size = 5;
+
+    if(count != undefined) {
+        size = parseInt(count)
+    }
+
+    if(pageno != undefined) {
+        start = (parseInt(pageno) - 1) * size
+    }
+
+    var list = []
+    connection.query('select * from goods order by itemid limit ?, ?', 
+        [start, size], (err, results, fields) => {
+            if(err) {
+                throw err
+            }
+
+            list = results
+
+            connection.query('select count(*) cnt from goods',
+            (err, results, fields) => {
+                if(err) {
+                    throw err
+                }
+             
+                res.json({'count':results[0].cnt, 'list':list})
+            })
+    })
+})
+
+2) 브라우저에서 아래 URL을 입력해서 나오는 데이터 확인
+http://localhost:9000/item/list - 첫번째 페이지 데이터 5개
+http://localhost:9000/item/list?pageno=2 - 두번째 페이지 데이터 5개
+http://localhost:9000/item/list?pageno=2&count=10 - 두번째 페이지 데이터 10개
+
+3) 더보기 버튼을 눌렀을 때 데이터를 가져오기 위해 이벤트 추가
+        document.getElementById("listbtn").addEventListener(
+            'click', (e) => {            
+                page = 1;
+                count = 5;
+
+                var request = new XMLHttpRequest()
+
+                request.open("GET", "/item/list?pageno=" + pageno + "&count=" + count)
+                request.send('')
+
+                updatearea.innerHTML ="";
+
+                request.addEventListener('load', () => {
+                    // 데이터 가져오기
+                    var data = JSON.parse(request.responseText)
+
+                    var list = data.list
+                    var cnt = data.count
+
+                    // 출력 내용 만들기
+                    var display = "<div align='center' class='body'>"
+                    display += "<h2>상품 목록 화면</h2>"
+
+                    display += "<table border='1' id='tbldata'>"
+
+                    display += "<tr class='count'><td colspan='3' align='center'>"
+                    display += "전체 데이터 개수 : " + cnt;
+                    display += "</td></td>"
+
+                    display += "<tr class='header'>"
+                    display += "<th align='center' width='80'>상품ID</th>"
+                    display += "<th align='center' width=320'>상품명</th>"
+                    display += "<th align='center' width='100'>가격</th>"
+                    display += "</tr>"
+
+                    // 데이터 출력하는 부분
+                    for (var idx in list) {
+                        var item = list[idx];
+                        
+                        display += "<tr class='record'>"
+                        display += "<td align='center'>" + item.itemid + "</td>"
+                        display += "<td align='center'>" + item.itemname + "</td>"
+                        display += "<td align='right'>" + item.price + "원</td>"
+                        display += "</tr>"
+                    }
+
+                    display += "</table></div>"
+
+                    content.innerHTML= display
+
+                    // 다음 페이지의 데이터를 가져와서 추가할 UI를 추가
+                    display = "";
+
+                    if((pageno - 1) * count < cnt) {
+                        display += "<table align='center' width='500' id='tblbtn'>"
+                        display += "<tr><td align='center' colspan='3'>"
+                        display += "<span id='addbtn'>더보기</span></td>"
+                        display += "</tr></table>"
+                    }
+
+                    content.innerHTML += display;
+
+                    // 더보기 버튼 찾아오기
+                    var addbtn = document.getElementById('addbtn')
+
+                    if(addbtn != undefined) {
+                        addbtn.addEventListener("click", (e) => {
+                            // 페이지 번호 증가
+                            pageno = pageno + 1;
+
+                            var request = new XMLHttpRequest()
+                            request.open('GET', '/item/list?pageno=' + pageno + '&count=' + count)
+                            request.send(' ');
+
+                            // 가져온 데이터의 개수 전체 데이터 개수보다 많으면 더보기 삭제
+                            if(pageno * count >= cnt) {
+                                page = pageno - 1
+                                document.getElementById('tblbtn').remove()
+                            }
+
+                            request.addEventListener('load', () => {
+                                var data = JSON.parse(request.responseText)
+                                var display = ""
+
+                                // 이전에 데이터를 출력했던 테이블을 찾아오기
+                                const table = document.getElementById('tbldata')
+                                
+                                for(var idx in data.list) {
+                                    var item = data.list[idx]
+
+                                    display += "<tr class='record'>"
+                                    display += "<td align='center'>" + item.itemid + "</td>"
+                                    display += "<td align='center'>" + item.itemname + "</td>"
+                                    display += "<td align='right'>" + item.price + "원</td>"
+                                    display += "</tr>"
+                                }
+
+                                table.innerHTML += display;
+                            })
+                        })
+                    }
+                })
+        })
+
+4. 상세보기 : 출력된 데이터에서 이름을 누르면 상세 데이터를 가져와서 출력하기
+1) index.js 파일에 세부 데이터 1개를 가져오는 라우팅 함수를 작성
+// 상세 보기 - 데이터 1개를 가져와서 리턴
+app.get('/item/detail', (req, res, next) => {
+    // 1개의 데이터를 찾아오기 위한 primary key 값 가져오기
+    var itemid = req.query.itemid
+
+    if(itemid == undefined) {
+        itemid = 1;
+    }
+
+    connection.query('select * from goods where itemid=?', 
+        itemid, (err, results, fields) => {
+            if(err) {
+                throw err
+            }
+
+            if(results.length === 0) {
+                res.json({'result':false})
+            } else {
+                res.json({'result':true, 'item':results[0]})
+            }
+        })
+})
+
+2) 브라우저에 localhost:9000/item/detail?itemid=1 및 DB에 없는 itemid의 값도 입력하면서 결과를 확인
+
+3) index.html 파일의 스크립트에서 데이터의 일부분을 출력하는 부분에서 제목에 링크를 설정해서 상세보기로 이동하도록 수정
+    display += "<td align='center'>" + item.itemid + "</td>"
+    display += "<td align='center'>"
+    display += "<a href='#' id='item" + item.itemid + "'>"
+    display += item.itemname + "</a></td>"
+
+4) index.html 파일에 제목들을 출력하는 영역을 클릭했을 때 처리를 위한 스크립트 코드를 추가
+                content.addEventListener('click',
+                    (e) => {
+                        // 실제로 클릭이 발생한 항목의 id가 item으로 시작할 때만
+                        if(e.target.id.startsWith('item')) {
+                            // itemid만 추출 - item이라는 4글자를 제외하고
+                            var itemid = e.target.id.substr(4).trim()
+                            var request = new XMLHttpRequest()
+
+                            request.open('GET', '/item/detail?itemid=' + itemid)
+                            request.send(' ')
+                            request.addEventListener('load', () => {
+                                // 자바스크립트 데이터로 변환
+                                var data = JSON.parse(request.responseText)
+                                
+                                // 출력 영역 초기화
+                                updatearea.innerHTML = ''
+                                content.innerHTML ='';
+
+                                // 출력 내용 만들기
+                                var display = "";
+
+                                display += "<div align='center' class='body'>"
+                                display += "<h2>상품 상세 화면</h2>"
+
+
+                                // 데이터가 있다면
+                                if(data.result == true) {
+                                    var item = data.item
+
+                                    display += "<table>"
+                                    display += "<tr><td>"
+                                    display += "<img height='300' width='300' src='/img/" + item.pictureurl
+                                    display += "'></td></tr>"
+
+                                    display += "<td align='center'><table>"
+                                    display += "<tr height='50'><td width='80'>"
+                                    display += "상품명</td>"
+                                    display += "<td width='160'>" + item.itemname
+                                    display += "</td></tr>"
+
+                                    display += "<tr height='50'><td width='80'>"
+                                    display += "가격</td>"
+                                    display += "<td width='160'>" + item.price + "원"
+                                    display += "</td></tr>"
+
+                                    display += "<tr height='50'><td width='80'>"
+                                    display += "비고</td>"
+                                    display += "<td width='160'>" + item.description + "원"
+                                    display += "</td></tr>"
+
+                                    display += "<tr height='50'>"
+                                    display += "<td colspan='2' align='center' width='240'>"
+                                    display += "<a href='#' id='mainbtn'>목록보기</a>"
+                                    display += "</td></tr>"
+
+                                    display += "</table></td>"
+                                    display += "</table>"
+                                } else {
+                                    display += "<p>데이터가 존재하지 않습니다.</p>"
+                                }
+                                
+                                content.innerHTML = display
+
+                                var mainbtn = document.getElementById('mainbtn')
+ 
+                                if(mainbtn !== undefined) {
+                                    mainbtn.addEventListener('click', (e) => {
+                                        document.getElementById('listbtn').click()
+                                    })
+                                }
+                            })
+                        }
+                })
+        })
+
+5) 기본 샘플 이미지를 public 디렉토리 안의 img 디렉토리로 복사
+
+5. 데이터 삽입 구현
+1) 데이터 삽입 화면을 위한 insert.html 파일을 public 디렉토리에 생성하고 작성
+<div>
+    <form method="post" id="insertform" enctype="multipart/form-data">
+        아이템 이름 : <input type="text" name="itemname" id="itemname"/>
+        아이템 가격 : <input type="text" name="price" id="price"/>
+        이미지 : <input type="file" name="pictureurl" id="pictureurl"/>
+        <br/>
+        설명 : <textarea name="description" id="description" cols="30" rows="10"></textarea>
+        <br/>
+        <input type="submit" value="삽입"/>
+    </form>
+</div>
+
+2) 데이터 삽입 화면을 요청하는 처리 코드를 index.js에 추가
+app.get('/item/insert', (req, res, next) => {
+    // public 디렉토리에 있는 insert.html 파일을 비동기로 읽어서
+    // 에러가 발생하면 에러 내용을 err에 저장하고 그렇지 않으면 
+    // 읽은 내용을 data에 저장
+    fs.readFile('public/insert.html', (err, data) => {
+        // 문자열로 전송
+        res.end(data)
+    })
+})
+
+3) 데이터 삽입 요청을 처리하는 코드를 작성
+// 데이터 삽입 요청 : 하나의 파일 업로드
+app.post('/item/insert', upload.single('pictureurl'), (req, res, next) => {
+    // 클라이언트가 전송한 데이터를 가져오기
+    const itemname = req.body.itemname
+    const description = req.body.description
+    const price = req.body.price
+
+    // 파일 파라미터 읽기
+    var pictureurl
+
+    if(req.file) {
+        pictureurl = req.file.filename
+    } else {
+        pictureurl="default.png"
+    }
+
+    // 가장 큰 itemid를 조회해서 다음 itemid를 생성
+    connection.query('select max(itemid) maxid from goods',
+    (err, results, fields) => {
+            var itemid
+
+            if(err) {
+                throw err
+            }
+
+            if(results.length > 0) {
+                itemid = results[0].maxid + 1
+            } else {
+                itemid = 1
+            }
+
+            // 삽입하는 날짜(현재 날짜 및 시간)를 생성
+            var date = new Date()
+
+            var year = date.getFullYear()
+            var month = date.getMonth() + 1
+            var day = date.getDate()
+            
+            var hour = date.getHours()
+            var minute = date.getMinutes()
+            var second = date.getSeconds()
+
+            month = month >= 10 ? month : '0' + month;
+            day = day >= 10 ? day : '0' + day
+
+            hour = hour >= 10 ? hour : '0' + hour
+            minute = minute >= 10 ? minute : '0' + minute
+            second = second >= 10 ? second : '0' + second
+
+            connection.query('insert into goods(itemid, itemname, price, description, pictureurl, updatedate) values(?, ?, ?, ?, ?, ?)',
+                [itemid, itemname, price, description, pictureurl, year+'-'+month+'-'+day], 
+                (err, results, fields) => {
+                    if(err) {
+                        throw err
+                    }
+
+                    if(results.affectedRow === 1) {
+                        // 데이터를 삽입한 시간을 update.txt에 기록
+                        const writeStream = fs.createWriteStream('./update.txt')
+
+                        writeStream.write(
+                            '[' + year + '-' + month + '-' + day + ' ' + hour + ':' + minute + ':' + second + ' -> 레코드 삽입 완료]',
+                            (err) => {
+                                if(err) {
+                                    throw err
+                                }
+                        })
+                        writeStream.end()
+
+                        res.json({'result':true})
+                    } else {
+                        res.json({'result':false})
+                    }
+            })
+    })
+})
+
+4) index.html 파일에 삽입 요청을 위한 메뉴 생성
+<a href="#" id="insertbtn">데이터 삽입</a><br/>
+
+5) index.html 파일에 삽입 요청을 위한 스크립트를 생성
+        var insertbtn = document.getElementById('insertbtn')
+        
+        insertbtn.addEventListener(
+            'click', (e) => {
+                var request = new XMLHttpRequest()
+                request.open('GET', '/item/insert')
+                request.send('')
+                request.addEventListener('load', () => {
+                    // 데이터 출력 영역 초기화
+                    content.innerHTML = "";
+                    updatearea.innerHTML = request.responseText
+
+                    // 폼을 찾아오기
+                    var f = document.getElementById("insertform")
+
+                    if(f !== undefined) {
+                        f.addEventListener('submit', (e) => {
+                            // 기본 이벤트 제거 - form의 데이터를 sumit하지 않음
+                            e.preventDefault()
+
+                            // 폼의 데이터 가져오기
+                            const formData = new FormData(f)
+
+                            // 폼의 데이터를 전송
+                            var xhr = new XMLHttpRequest()
+                            xhr.open('POST', '/item/insert', true)
+                            xhr.send(formData)
+
+                            xhr.addEventListener('load', () => {
+                                var data = JSON.parse(xhr.responseText)
+                                
+                                if(data.result) {
+                                    // 목록 보기 실행
+                                    updatearea.innerHTML = ''
+                                    document.getElementById('listbtn').click()
+                                } else {
+                                    alert("삽입 실패")
+                                }
+                            })  
+                        })
+                    }
+                })
+        })
+
+6. 데이터 삭제
+=> 서버에서 데이터 삭제 처리는 기본키 값을받아서 삭제하는 SQL을 실행합니다.
+실무에서는 다른 방법을 고려해봐야하는데 다른 테이블에 일정 기간 동안 데이터를 보관한 후 삭제한다던가
+아니면 삭제된 것처럼 표시만 해두는 경우나 특정 컬럼만 제거하거나 null로 만드는 방식도 사용합니다.
+
+1) index.js 파일에 삭제를 위한 라우팅 함수를 작성
+app.post('/item/delete', (req, res, next) => {
+    // 파라미터 읽어오기 : 삭제는 기본키만을 읽어옵니다.
+    // 클라이언트에서는 itemid라는 이름으로 itemid를 post 방식으로 전송
+    const itemid = req.body.itemid
+
+    // 삭제하는 날짜(현재 날짜 및 시간)를 생성
+    var date = new Date()
+
+    var year = date.getFullYear()
+    var month = date.getMonth() + 1
+    var day = date.getDate()
+    
+    var hour = date.getHours()
+    var minute = date.getMinutes()
+    var second = date.getSeconds()
+
+    month = month >= 10 ? month : '0' + month;
+    day = day >= 10 ? day : '0' + day
+
+    hour = hour >= 10 ? hour : '0' + hour
+    minute = minute >= 10 ? minute : '0' + minute
+    second = second >= 10 ? second : '0' + second
+
+    connection.query('delete from goods where itemid=?', [itemid],
+        (err, results, fields) => {
+            // 에러 내용 확인
+            if(err) {
+                // throw err
+                console.log(err)
+            }
+
+            if(results.affectedRows > 0) {
+                const writeStream = fs.createWriteStream('./update.txt')
+
+                writeStream.write(
+                    '[' + year + '-' + month + '-' + day + ' ' + hour + ':' + minute + ':' + second + ' -> 레코드 삭제 완료]',
+                    (err) => {
+                        if(err) {
+                            throw err
+                        }
+                })
+                writeStream.end()
+
+                res.json({'result':true})
+            } else {
+                res.json({'result':false})
+            }
+    })
+})
+
+2) index.html 파일의 상세보기 스크립트 코드를 수정
+var deletebtn = document.getElementById('deletebtn')
+
+if(deletebtn !== undefined) {
+    deletebtn.addEventListener('click', (e) => {
+        var request = new XMLHttpRequest()
+                                        
+        // 폼이 없고 파일이 없는 상태의 POST 방식 파라미터 만들기
+        var params = "itemid=" + data.item.itemid
+
+        request.open('POST', '/item/delete', true)
+        request.setRequestHeader('Content-Type',
+            'application/x-www-form-urlencoded')
+            
+        request.send(params)
+        request.addEventListener('load', () => {
+            var data = JSON.parse(request.responseText)
+
+            if(data.result) {
+                updatearea.innerHTML=''
+                document.getElementById('listbtn').click()
+            } else {
+                alert('삭제 실패')
+            }
+        })
+    })
+}
+
+7. 데이터 수정
+1) 데이터 수정 화면으로 사용할 update.html 파일을 public 디렉토리에 생성하고 작성
+<div style="margin-top: 20px">
+    <form method='post' id='updateform' enctype='multipart/form-data'>
+        아이템 id : <input type="text" name="'itemid" id="itemid"><br/>
+        아이템 이름  : <input type='text' name='itemname' id='itemname'/><br/>
+        아이템 가격 : <input type='text' name='price' id='price'/><br/>
+        설명 : <textarea name='description' id='description' cols='30' rows='10'></textarea>
+        <br/>
+        새로운 이미지 : <input type='file' name='pictureurl' id='pictureurl'/><br/>
+        <br/>
+        이전 이미지 : <img width="100" height="100" id="picture" />
+        <input type="hidden" name="oldpictureurl" id="oldpictureurl"><br/>
+        <br/>
+        <input type='submit' value='수정'/>
+    </form>
+</div>
+
+2) index.js 파일에 데이터 수정 요청을 하면 update.html 파일의 내용을 읽어서 리턴하는 라우팅 함수를 작성
+// 수정 요청 처리
+app.get('/item/update', (req, res, next) => {
+    fs.readFile('public/update.html', (err, data) => {
+        res.end(data)
+    })
+})
+
+3) index.html 파일의 content 클릭 이벤트 스크립트를 수정
+// 수정 버튼을 눌렀을 때
+var updatebtn = document.getElementById('updatebtn')
+
+if(updatebtn !== undefined) {
+    updatebtn.addEventListener('click', (e) => {
+            var request = new XMLHttpRequest()
+            
+            e.preventDefault()
+
+            request.open('GET', '/item/update')
+            request.send('')
+            request.addEventListener('load', () => {
+                // 수정 화면 출력
+                content.innerHTML='';
+                updatearea.innerHTML=request.responseText
+
+                // 수정 화면에 데이터 매핑
+                var item = data.item
+
+                document.getElementById('itemid').value = item.itemid
+                document.getElementById('itemid').readOnly=true
+
+                document.getElementById('itemname').value = item.itemname
+                document.getElementById('price').value = item.price
+                document.getElementById('description').value = item.description
+                document.getElementById('oldpictureurl').value = item.pictureurl
+                document.getElementById('picture').src = "/img/" + item.pictureurl
+            })
+
+            // 수정 폼을 찾아옵니다.
+            var updateform = document.getElementById('updateform')
+
+            updateform.addEventListener('submit', (e) => {
+                // 폼 데이터 가져오기
+                var formData = new FormData(updateform)
+
+                // 기본 이벤트 처리 내용을 수행하지 않음
+                e.preventDefault()
+
+                // 폼 데이터 전송
+                var xhr = new XMLHttpRequest()
+
+                xhr.open('POST', 'item/update', true)
+                xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded')
+                xhr.send(formData)
+                xhr.addEventListener('load', ()=>{
+                    var data = JSON.parse(xhr.responseText)
+
+                    if(data.result) {
+                        alert('수정 성공')
+                        document.getElementById('listbtn').click()
+                    } else {
+                        alert('수정 실패')
+                    }
+                })
+            })
+    })
+}
+
+4) index.js 파일에 수정 요청 처리를 위한 라우팅 함수 작성
+app.post('/item/update', upload.single('pictureurl'), (req, res, next) => {
+    // 파라미터 읽어오기
+    const itemid = req.body.itemid
+    const itemname = req.body.itemname
+    const description = req.body.description
+    const price = req.body.price
+    const oldpirctureurl = req.body.oldpirctureurl
+
+    console.log(itemid);
+    
+    var pictureurl
+
+    if(req.file) {
+        pictureurl=req.file.filename
+    } else {
+        prictureurl=oldpirctureurl
+    }
+
+    // 수정하는 날짜(현재 날짜 및 시간)를 생성
+    var date = new Date()
+
+    var year = date.getFullYear()
+    var month = date.getMonth() + 1
+    var day = date.getDate()
+    
+    var hour = date.getHours()
+    var minute = date.getMinutes()
+    var second = date.getSeconds()
+
+    month = month >= 10 ? month : '0' + month;
+    day = day >= 10 ? day : '0' + day
+
+    hour = hour >= 10 ? hour : '0' + hour
+    minute = minute >= 10 ? minute : '0' + minute
+    second = second >= 10 ? second : '0' + second
+
+    connection.query('update goods set itemname=?, price=?, description=?, pictureurl=?, updatedate=? where itemid=?',
+        [itemname, price, description, pictureurl, year+'-'+month+'-'+day, itemid], 
+        (err, results, fields)=>{
+            if(err) {
+                console.log(err)
+                // throw err
+            }
+
+            if(results.affectedRows >= 0) {
+                // 데이터를 수정한 시간을 update.txt에 기록
+                const writeStream = fs.createWriteStream('./update.txt')
+
+                writeStream.write(
+                    '[' + year + '-' + month + '-' + day + ' ' + hour + ':' + minute + ':' + second + ' -> 레코드 삭제 완료]',
+                    (err) => {
+                        if(err) {
+                            throw err
+                        }
+                })
+                writeStream.end()
+
+                res.json({'result':true})
+            } else {
+                res.json({'result':false})
+            }
+    })
+})
+
+8. 데이터가 마지막으로 수정된 날짜 및 시간을 제공하는 요청을 index.js에 생성
+app.get('/item/date', (req, res, next) => {
+    fs.readFile('./update.txt', (err, data) => {
+        res.json({'result':data.toString()})
+    })
+})
+
+9. 이미지 다운로드 구현
+1) index.js 파일에 이미지 이름을 매개변수로 받아서 이미지를 다운로드 받도록 해주는 라우팅 함수를 구현
+// 이미지 다운로드 구현
+// 최근에 클라이언트에서 서버로 데이터 1개를 보내야 하는 경우
+// 파라미터 형태보다는 url 마지막에 작성하는 경우가 많습니다.
+app.get('/img/:fileid', (req, res, next) => {
+    var fileid = req.params.fileid
+
+    // 다운로드 받을 파일 경로를 설정
+    var file = 'E:\\BlockChain\\Node\\node_mysql\\public\\img\\' + fileid
+
+    // 타입 설정
+    var mimetype = mime.lookup(fileid)
+
+    res.setHeader('Content-disposition', 'attachment; filename=' + fileid)
+    res.setHeader('Content-type', mimetype)
+
+    var filestream = fs.createReadStream(file)
+
+    filestream.pipe(res)
+})
+
+2) index.html 파일의 상세보기 처리 부분에서 이미지를 누르면 다운로드 받도록 출력하는 부분을 수정
+display += "<a href='/img/" + item.pictureurl + "'>"
+display += "<img height='300' width='300' src='/img/" + item.pictureurl
+display += "'></a></td></tr>"

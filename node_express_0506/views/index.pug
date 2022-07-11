@@ -1,0 +1,18 @@
+doctype html
+html
+    head
+        title=title
+        link(rel='stylesheet', href='/style.css')
+    body
+        block content
+block content
+    h1 Welcome to #{title}
+
+    #Pokemon
+        ul
+            each pokemon in Pokemon
+                li=pokemon
+
+    script.
+        const message = 'Hello'
+        alert(message)

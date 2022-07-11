@@ -1,0 +1,41 @@
+body {
+    margin: 0px;
+}
+
+#cv {
+    width: 823px;
+    height: 645px;
+    background-image: url('../images/blackboard.jpg');
+    float:left;
+}
+
+.menu {
+    width: 120px;
+    float: left;
+}
+
+button {
+    margin-left: 0.1rem;
+    width: 115px;
+    height: 50px;
+}
+
+#cv_pen {
+    width: 100px;
+    height: 50px;
+    float: left;
+    background-image: url('images/blackborad.jpg');
+}
+
+fieldset {
+    width: 85px;
+    height: 50px;
+    float: left;
+}
+
+#pen_shape {
+    position: absolute;
+    top:10px;
+    left:680px;
+    color: white;
+}

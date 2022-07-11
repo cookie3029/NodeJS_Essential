@@ -1,0 +1,23 @@
+{
+  "development": {
+    "username": "kabigon",
+    "password": "jjansu88",
+    "database": "node",
+    "host": "127.0.0.1",
+    "dialect": "mysql"
+  },
+  "test": {
+    "username": "kabigon",
+    "password": "jjansu88",
+    "database": "node",
+    "host": "127.0.0.1",
+    "dialect": "mysql"
+  },
+  "production": {
+    "username": "kabigon",
+    "password": "jjansu88",
+    "database": "node",
+    "host": "127.0.0.1",
+    "dialect": "mysql"
+  }
+}

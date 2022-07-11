@@ -1,0 +1,17 @@
+<div style="margin-top: 20px">
+    <form method='post' id='updateform' enctype='multipart/form-data'>
+        아이템 id : <input type='text' name='itemid' id='itemid' style="width: 177px"/>
+        <br/>
+        아이템 이름 : <input type='text' name='itemname' id='itemname'/>
+        <br/>
+        아이템 가격 : <input type='text' name='price' id='price'/>
+        <br/><br/>
+        설명 : <textarea name='description' id='description' cols='30' rows='10'></textarea>
+        <br/><br/>
+        새 이미지 : <input type='file' name='pictureurl' id='pictureurl'/>
+        <br/><br/>
+        이전 이미지 : <img width="163" height="163" id="picture" /><br/>
+        <input type="hidden" name="oldpictureurl" id="oldpictureurl"/>
+        <input type='submit' value='수정'/>
+    </form>
+</div>

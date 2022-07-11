@@ -1,0 +1,22 @@
+a {
+    text-decoration: none;
+    color: royalblue
+}
+
+div.body {
+    margin-top: 50px;
+    margin-bottom: 50px;
+}
+
+tr.header {
+    background: #C9BFED;
+}
+
+tr.record {
+    background: #EDEDED;
+}
+
+img {
+    border: 1.5px solid royalblue;
+    border-radius: 10px;
+}

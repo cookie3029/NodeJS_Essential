@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta charset="UTF-8">
+        <title>Document</title>
+    </head>
+    <body>
+        <h1>{{title}}</h1>
+        
+        <ul>
+            {% for item in Pokemon %}
+                <li>{{loop.index}}번째 : {{item}}</li>
+            {% endfor %}
+        </ul>
+        
+        <p>변수 생성</p>
+        {% set fruit = 'orange' %}
+        
+        {% if fruit === 'apple' %}
+            <p>사과</p>
+        {% elif fruit === 'orange' %}
+            <p>오렌지</p>
+        {% else %}
+            <p>모르는 과일</p>
+        {% endif %}
+    </body>
+</html>

@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta charset="UTF-8"/>
+        <title>웹 소켓</title>
+
+        <!-- 모바일 웹 페이지 생성 시 옵션 설정 -->
+        <meta name="viewport" content="width=device-width, initial-scale=1"/>
+
+        <!-- 내부 코드는 ajax로 동작 -->
+        <!-- JQuery Mobile은 기본적으로 Single Page Application으로 제작 -->
+        <script src="http://code.jquery.com/jquery-1.8.2.min.js"></script>
+        
+        <script src="/socket.io/socket.io.js"></script>
+        <script src="js/board.js"></script>
+
+        <link rel="stylesheet" href="stylesheet/style.css">
+    </head>
+    <body>
+        <canvas id="cv" width="860px" height="645px"></canvas>
+        <div class="menu">
+            <button id="clear">전체 삭제</button>
+            <fieldset>
+                <legend>색상 변경</legend>
+                <select id="pen_color"></select>
+            </fieldset>
+            <fieldset>
+                <legend>두께</legend>
+                <select id="pen_width"></select>
+            </fieldset>
+            <fieldset id="pen_shape">
+                <legend>모양</legend>
+            </fieldset>
+        </div>
+    </body>
+</html>
